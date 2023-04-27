@@ -1,11 +1,14 @@
 use macroquad::prelude::{is_key_released, KeyCode};
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SimpleMove {
     Left,
     Right,
     Down,
     Rotate,
 }
+
+#[derive(Debug, Clone)]
 pub enum Move {
     Simple(SimpleMove),
     // hard-drop means we drop the piece immediately as low as it can go

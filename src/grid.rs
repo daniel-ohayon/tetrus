@@ -1,12 +1,19 @@
-use macroquad::{shapes::{draw_rectangle, draw_line}, prelude::BLUE};
+use macroquad::{
+    prelude::BLUE,
+    shapes::{draw_line, draw_rectangle},
+};
 
-use crate::{constants::{GRID_HEIGHT, GRID_WIDTH, BLOCK_SIZE, CELL_BORDER}, shapes::SHAPE_COLORS};
+use crate::{
+    constants::{BLOCK_SIZE, CELL_BORDER, GRID_HEIGHT, GRID_WIDTH},
+    shapes::SHAPE_COLORS,
+};
 
-const EMPTY_CELL: i32 = -1;
+pub const EMPTY_CELL: i32 = -1;
 
+#[derive(Clone)]
 pub struct Grid {
     // a 2D array where each cell represents a cell on the Tetris grid
-    grid: [[i32; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
+    pub grid: [[i32; GRID_WIDTH as usize]; GRID_HEIGHT as usize],
 }
 
 impl Grid {

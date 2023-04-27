@@ -43,11 +43,11 @@ pub fn get_shapes() -> [Vec<[(i16, i16); 4]>; 6] {
     ];
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct ShapePosition {
     pos: (i16, i16),
     shape_index: usize,
-    rotation_index: usize,
+    pub rotation_index: usize,
     pub color_index: usize,
 }
 
@@ -61,6 +61,10 @@ impl ShapePosition {
         }
     }
 
+    pub fn n_rotations(&self) -> usize {
+        return get_shapes()[self.shape_index].len();
+    }
+
     pub fn moved_to(&self, move_: &SimpleMove) -> Self {
         let mut new_pos = self.clone();
         match move_ {
@@ -72,6 +76,14 @@ impl ShapePosition {
                 new_pos.rotation_index = (new_pos.rotation_index + 1) % n_rotations
             }
         }
+        return new_pos;
+    }
+
+    pub fn n_moves(&self, horizontal_shift: i16, n_rotations: usize, vertical_shift: u16) -> Self {
+        let mut new_pos = self.clone();
+        new_pos.rotation_index += n_rotations;
+        new_pos.pos.1 += horizontal_shift;
+        new_pos.pos.0 += vertical_shift as i16;
         return new_pos;
     }
 

@@ -1,23 +1,38 @@
-use std::time::SystemTime;
+use std::time::{SystemTime};
 
-use crate::{grid::Grid, shapes::ShapePosition, score::Score, constants::USER_MOVE_DEBOUNCE_MS, moves::{Move, SimpleMove}};
+use crate::{grid::Grid, shapes::ShapePosition, score::Score, constants::USER_MOVE_DEBOUNCE_MS, moves::{Move, SimpleMove}, ai::TetrisBot};
 
 pub struct Game {
     grid: Grid,
+    // info about the tetromino that the user currently controls
     current_shape: ShapePosition,
+    // last time that the block was moved one cell down.
+    // used for the game clock
     last_drop_time: SystemTime,
+    // last time that a user-requested move was honored.
+    // used for debouncing user moves
     last_user_move_time: SystemTime,
     score: Score,
+    bot: Option<TetrisBot>
 }
 
 impl Game {
-    pub fn new() -> Self {
-        Game {
-            grid: Grid::new(),
-            current_shape: ShapePosition::new(),
+    pub fn new(use_ai: bool) -> Self {
+        let grid = Grid::new();
+        let current_shape = ShapePosition::new();
+        let bot = use_ai.then(|| {
+            let mut _bot = TetrisBot::new();
+            _bot.update_policy(&grid, &current_shape);
+            return _bot;
+        });
+
+        return Game {
+            grid,
+            current_shape,
             last_drop_time: SystemTime::now(),
             last_user_move_time: SystemTime::now(),
             score: Score::new(),
+            bot
         }
     }
 
@@ -76,24 +91,36 @@ impl Game {
         if self.should_debounce_user_move() {
             return;
         }
+        
+        if let Some(user_move) = self.get_move_from_human_or_bot() {
+            self.apply_move(&user_move);
+            self.last_user_move_time = SystemTime::now();
+        }
+    }
 
-        match Move::from_key_press() {
-            None => return,
-            Some(Move::Simple(simple_move)) => {
+    fn get_move_from_human_or_bot(&mut self) -> Option<Move> {
+        if let Some(bot) = &mut self.bot {
+            return bot.pop_next_move();
+        } else {
+            return Move::from_key_press();
+        }
+    }
+
+    fn apply_move(&mut self, move_: &Move) {
+        match move_ {
+            Move::Simple(simple_move) => {
                 let new_pos = self.current_shape.moved_to(&simple_move);
                 if self.is_valid_move(&new_pos) {
-                    self.move_shape_to(new_pos)
+                    self.move_shape_to(new_pos);
                 }
             }
-            Some(Move::HardDrop) => {
+            Move::HardDrop => {
                 let mut did_hit_rock_bottom = false;
                 while !did_hit_rock_bottom {
                     did_hit_rock_bottom = self.perform_block_drop();
                 }
             }
         }
-
-        self.last_user_move_time = SystemTime::now();
     }
 
     fn perform_block_drop(&mut self) -> bool {
@@ -117,6 +144,11 @@ impl Game {
             }
             self.current_shape = new_pos;
             self.add_shape_to_grid();
+            
+            if let Some(bot) = &mut self.bot {
+                bot.update_policy(&self.grid, &self.current_shape)
+            }
+
             return true;
         } else {
             self.move_shape_to(new_pos);
