@@ -4,9 +4,9 @@ mod events;
 mod game;
 mod grid;
 mod moves;
+mod music;
 mod score;
 mod shapes;
-mod music;
 mod stats;
 
 use game::Game;
@@ -49,26 +49,23 @@ async fn main() {
     println!("Width: {}, Height: {}", screen_width(), screen_height());
 
     let mut scores: Vec<Score> = Vec::new();
-    let speedup = args.speedup.unwrap_or(if args.autoplay {10} else {1});
-    
+    let speedup = args.speedup.unwrap_or(if args.autoplay { 10 } else { 1 });
+
     for i in 0..args.n_games {
-        println!("Game {}/{}", i+1, args.n_games);
+        println!("Game {}/{}", i + 1, args.n_games);
         let mut game = Game::new(args.autoplay, speedup, args.no_screen);
         game.play().await;
         scores.push(game.score);
     }
 
     println!("Summary stats over {} games:", args.n_games);
+    let n_points = scores.iter().map(|s| s.points).collect();
+    let n_lines_cleared = scores.iter().map(|s| s.total_lines_cleared).collect();
+    let level = scores.iter().map(|s| s.level).collect();
+    println!("Score: {}", stats::summarize(&n_points));
     println!(
-        "Average score: {}",
-        stats::avg(&scores.iter().map(|s| s.points).collect())
+        "Number of lines cleared: {}",
+        stats::summarize(&n_lines_cleared)
     );
-    println!(
-        "Average number of lines cleared: {}",
-        stats::avg(&scores.iter().map(|s| s.total_lines_cleared).collect())
-    );
-    println!(
-        "Average level attained: {}",
-        stats::avg(&scores.iter().map(|s| s.level).collect())
-    );
+    println!("Average level attained: {}", stats::summarize(&level));
 }

@@ -15,3 +15,11 @@ pub fn variance(vals: &Vec<i32>) -> f32 {
         .collect::<Vec<f32>>();
     return float_avg(&squared_diffs);
 }
+
+pub fn sd(vals: &Vec<i32>) -> f32 {
+    return variance(vals).sqrt();
+}
+
+pub fn summarize(vals: &Vec<i32>) -> String {
+    return format!("{} ± {}", avg(vals), sd(vals));
+}
