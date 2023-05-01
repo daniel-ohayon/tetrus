@@ -1,10 +1,13 @@
 use std::iter;
 
+use ordered_float::OrderedFloat;
+
 use crate::{
     constants::{GRID_HEIGHT, GRID_WIDTH},
     grid::{Grid, EMPTY_CELL},
     moves::{Move, SimpleMove},
     shapes::ShapePosition,
+    stats::variance,
 };
 
 pub struct TetrisBot {
@@ -33,6 +36,20 @@ impl GridAnalysis {
             .count();
     }
 
+    fn col_height_variance(grid: &Grid) -> f32 {
+        // variance of column height
+        let mut col_heights: Vec<i32> = Vec::new();
+        for col_index in 0..GRID_WIDTH as usize {
+            for row_index in 0..(GRID_HEIGHT as usize) {
+                if grid.grid[row_index][col_index] != EMPTY_CELL {
+                    col_heights.push(GRID_HEIGHT as i32 - row_index as i32);
+                    break;
+                }
+            }
+        }
+        return variance(&col_heights);
+    }
+
     fn count_gaps(grid: &Grid) -> usize {
         // a gap is when there are empty cells with filled cells above them
         // we calculate this metric per *column*.
@@ -58,6 +75,7 @@ impl TetrisBot {
         TetrisBot { moves: Vec::new() }
     }
 
+    // for debugging
     fn moves_to_str(moves: &Vec<Move>) -> String {
         return iter::once("<")
             .chain(
@@ -105,16 +123,15 @@ impl TetrisBot {
         original_shape: &ShapePosition,
     ) -> Vec<(ShapePosition, Vec<Move>)> {
         let mut result = Vec::new();
-        let n_drops = 4;
+        let n_drops = 1; // let the piece drop by 1 cell so we are free to rotate it
 
         // these operations are not necessarily commutative?
         // eg sometimes you can't move then rotate, but you can rotate then move
         // but we can restrict ourselves to a subset of all possible moves for now
 
-        // FIXME I think for some pieces you need to let them fall a bit to rotate them?
         for direction in [SimpleMove::Left, SimpleMove::Right] {
             for i_rotation in 0..(original_shape.n_rotations()) {
-                for i_shift in 0..(GRID_WIDTH / 2 + 1) {
+                for i_shift in 0..(GRID_WIDTH / 2 + 3) {
                     let direction_sign = if direction == SimpleMove::Left { -1 } else { 1 };
                     // always add a vertical shift to allow pieces to rotate
                     let shape =
@@ -132,12 +149,6 @@ impl TetrisBot {
                 }
             }
         }
-        // debug print
-        // println!("Options:");
-        // result
-        //     .iter()
-        //     .map(|(_pos, mvs)| Self::moves_to_str(mvs))
-        //     .for_each(|strg| println!("{}", strg));
         return result;
     }
 
@@ -154,13 +165,13 @@ impl TetrisBot {
         }
     }
 
-    fn grid_score(grid: &Grid) -> i32 {
+    fn grid_score(grid: &Grid) -> f32 {
         // highly reward full lines
         // penalize height increase and gap increase
         let index_of_first_nonempty_row = GridAnalysis::get_first_nonempty_row_index(grid) as i32;
         let n_filled_rows = GridAnalysis::count_filled_rows(grid) as i32;
         let n_gaps = GridAnalysis::count_gaps(grid) as i32;
-        return n_filled_rows * 10 + index_of_first_nonempty_row - n_gaps;
+        return (n_filled_rows * 10 + index_of_first_nonempty_row - n_gaps) as f32;
     }
 
     fn decide_moves(original_grid: &Grid, current_shape: &ShapePosition) -> Vec<Move> {
@@ -170,13 +181,11 @@ impl TetrisBot {
 
         if let Some((_, best_moves)) = Self::enumerate_options(&grid, current_shape)
             .iter()
-            .max_by_key(|(shape, moves)| {
+            .max_by_key(|(shape, _moves)| {
                 grid.set_pixels(&shape.get_pixels(), 1);
                 let score = Self::grid_score(&grid);
-                // for debugging
-                println!("{} scores {}", Self::moves_to_str(moves), score);
                 grid.unset_pixels(&shape.get_pixels());
-                return score;
+                return OrderedFloat(score);
             })
         {
             return best_moves.to_vec();
@@ -184,9 +193,14 @@ impl TetrisBot {
         return Vec::new();
     }
 
+    // Call this function each time a new shape is presented
     pub fn update_policy(&mut self, grid: &Grid, current_shape: &ShapePosition) {
         self.moves = Self::decide_moves(grid, current_shape);
-        println!("Chosen moves: {:?}", Self::moves_to_str(&self.moves));
+        // println!(
+        //     "Chosen moves for {} block: {:?}",
+        //     index_to_color_name(current_shape.color_index),
+        //     Self::moves_to_str(&self.moves)
+        // );
     }
 
     pub fn pop_next_move(&mut self) -> Option<Move> {

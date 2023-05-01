@@ -1,16 +1,20 @@
+mod ai;
+mod constants;
+mod events;
+mod game;
+mod grid;
+mod moves;
 mod score;
 mod shapes;
-mod grid;
-mod game;
-mod constants;
-mod moves;
-mod ai;
+mod music;
+mod stats;
 
 use game::Game;
-use macroquad::{
-    audio::{load_sound_from_bytes, play_sound, PlaySoundParams},
-    window::next_frame, prelude::KeyCode,
-};
+use macroquad::window::{screen_height, screen_width};
+
+use rustop::opts;
+
+use crate::score::Score;
 
 // macroquad docs:
 // https://macroquad.rs/examples/
@@ -20,8 +24,6 @@ use macroquad::{
 // v y
 
 // https://mathworld.wolfram.com/Tetromino.html
-
-
 
 /*
 TODO
@@ -36,25 +38,36 @@ TODO
 
 #[macroquad::main("Tetrus")]
 async fn main() {
-    let mut game = Game::new(true);
-    // let music = load_sound_from_bytes(constants::MUSIC_BYTES).await.unwrap();
-    // play_sound(
-    //     music,
-    //     PlaySoundParams {
-    //         looped: true,
-    //         volume: 0.5,
-    //     },
-    // );
-
-    loop {
-        game.update_game();
-        next_frame().await;
-
-        if macroquad::prelude::is_key_down(KeyCode::Q) {
-            std::process::exit(0);
-        }        
-        // if macroquad::prelude::is_key_down(KeyCode::P) {
-        //     thread::sleep(Duration::from_secs(10));
-        // }
+    let (args, _rest) = opts! {
+        synopsis "A Tetris game implemented in Rust.";
+        opt autoplay:bool, desc:"Auto-play by AI";
+        opt n_games: usize=1, desc:"Number of games to play";
+        opt speedup: Option<u32>, desc:"Speedup rate of the game";
     }
+    .parse_or_exit();
+
+    println!("Width: {}, Height: {}", screen_width(), screen_height());
+
+    let mut scores: Vec<Score> = Vec::new();
+    let speedup = args.speedup.unwrap_or(if args.autoplay {10} else {1});
+    
+    for _ in 0..args.n_games {
+        let mut game = Game::new(args.autoplay, speedup);
+        game.play().await;
+        scores.push(game.score);
+    }
+
+    println!("Summary stats over {} games:", args.n_games);
+    println!(
+        "Average score: {}",
+        stats::avg(&scores.iter().map(|s| s.points).collect())
+    );
+    println!(
+        "Average number of lines cleared: {}",
+        stats::avg(&scores.iter().map(|s| s.total_lines_cleared).collect())
+    );
+    println!(
+        "Average level attained: {}",
+        stats::avg(&scores.iter().map(|s| s.level).collect())
+    );
 }

@@ -5,9 +5,9 @@ use macroquad::{text::draw_text, prelude::WHITE};
 use crate::constants::{GRID_WIDTH, BLOCK_SIZE};
 
 pub struct Score {
-    points: i32,
-    level: i32,
-    total_lines_cleared: i32,
+    pub points: i32,
+    pub level: i32,
+    pub total_lines_cleared: i32,
 }
 
 impl Score {

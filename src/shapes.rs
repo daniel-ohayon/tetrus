@@ -7,6 +7,19 @@ use crate::{constants::GRID_WIDTH, moves::SimpleMove};
 pub const SHAPE_COLORS: [macroquad::prelude::Color; 7] =
     [YELLOW, ORANGE, BLUE, PURPLE, GREEN, RED, WHITE];
 
+pub fn index_to_color_name(index: usize) -> String {
+    let res = match index {
+        0 => "yellow",
+        1 => "orange",
+        2 => "blue",
+        3 => "purple",
+        4 => "green",
+        5 => "red",
+        6 => "white",
+        _ => "?"
+    };
+    return res.to_string();
+}
 pub fn get_shapes() -> [Vec<[(i16, i16); 4]>; 6] {
     return [
         // square

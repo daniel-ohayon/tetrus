@@ -1,3 +1,4 @@
 /target
-music.ogg
+music/
 .vscode
+src/.DS_Store
