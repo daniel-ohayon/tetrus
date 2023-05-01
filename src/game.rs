@@ -11,10 +11,10 @@ use crate::{
     events::{Event, EventLog},
     grid::Grid,
     moves::{Move, SimpleMove},
+    music::MusicPlayer,
     score::Score,
-    shapes::ShapePosition, music::MusicPlayer,
+    shapes::ShapePosition,
 };
-
 
 pub struct Game {
     grid: Grid,
@@ -27,12 +27,13 @@ pub struct Game {
     music_player: MusicPlayer,
     event_log: EventLog,
     clock_speedup_rate: u32,
+    no_screen: bool,
 }
 
 impl Game {
     const USER_MOVE_DEBOUNCE: Duration = Duration::from_millis(100);
 
-    pub fn new(use_ai: bool, speedup_rate: u32) -> Self {
+    pub fn new(use_ai: bool, speedup_rate: u32, no_screen: bool) -> Self {
         let grid = Grid::new();
         let current_shape = ShapePosition::new();
         let bot = use_ai.then(|| {
@@ -46,9 +47,10 @@ impl Game {
             current_shape,
             score: Score::new(),
             bot,
-            music_player: MusicPlayer::new(!use_ai),
+            music_player: MusicPlayer::new(!no_screen),
             event_log: EventLog::new(),
             clock_speedup_rate: speedup_rate,
+            no_screen,
         };
     }
 
@@ -88,6 +90,15 @@ impl Game {
     }
 
     fn perform_user_move(&mut self) {
+        // In no-screen mode, just perform all the bot-requested moves
+        // and ignore gravity
+        if self.no_screen {
+            while let Some(user_move) = self.get_move_from_human_or_bot() {
+                self.apply_move(&user_move);
+            }
+            return;
+        }
+
         if !self.event_log.elapsed_since(
             Event::UserMove,
             Self::USER_MOVE_DEBOUNCE / self.clock_speedup_rate,
@@ -129,10 +140,6 @@ impl Game {
     fn game_over(&mut self) {
         self.event_log.register_event(Event::GameOver);
         self.music_player.play_game_over();
-
-        if self.bot.is_some() {
-            return;
-        }
     }
 
     fn draw_game_over_screen(&self) {
@@ -182,7 +189,7 @@ impl Game {
     }
 
     fn perform_block_drop_debounced(&mut self) {
-        if !self.event_log.elapsed_since(
+        if !self.no_screen && !self.event_log.elapsed_since(
             Event::GravityDrop,
             self.score.get_block_drop_delay() / self.clock_speedup_rate,
         ) {
@@ -193,6 +200,9 @@ impl Game {
     }
 
     fn draw(&self) {
+        if self.no_screen {
+            return;
+        }
         self.grid.draw();
         self.score.draw();
     }
@@ -203,7 +213,9 @@ impl Game {
             if !self.update_game() {
                 break;
             }
-            next_frame().await;
+            if !self.no_screen {
+                next_frame().await;
+            }
 
             if macroquad::prelude::is_key_down(KeyCode::Q) {
                 break;
@@ -214,8 +226,7 @@ impl Game {
     // returns a bool indicating whether the game should keep going
     fn update_game(&mut self) -> bool {
         if self.event_log.did_happen(Event::GameOver) {
-            if self.bot.is_some() {
-                // don't display Game Over screen for AI-played games
+            if self.no_screen {
                 return false;
             }
             self.draw_game_over_screen();

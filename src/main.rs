@@ -28,11 +28,10 @@ use crate::score::Score;
 /*
 TODO
 - add sound effect when clearing line
-- add GAME OVER effect
 - try WASM?
 - try to train a self-learning agent
 - teach bot about fall + shift
-- add feature to collect stats on bot games
+- mode with no rendering and no time for bot training/testing
 - find more efficient way of loading the music
  */
 
@@ -43,6 +42,7 @@ async fn main() {
         opt autoplay:bool, desc:"Auto-play by AI";
         opt n_games: usize=1, desc:"Number of games to play";
         opt speedup: Option<u32>, desc:"Speedup rate of the game";
+        opt no_screen: bool, desc:"Do not display the game on screen (for AI testing)";
     }
     .parse_or_exit();
 
@@ -51,8 +51,9 @@ async fn main() {
     let mut scores: Vec<Score> = Vec::new();
     let speedup = args.speedup.unwrap_or(if args.autoplay {10} else {1});
     
-    for _ in 0..args.n_games {
-        let mut game = Game::new(args.autoplay, speedup);
+    for i in 0..args.n_games {
+        println!("Game {}/{}", i+1, args.n_games);
+        let mut game = Game::new(args.autoplay, speedup, args.no_screen);
         game.play().await;
         scores.push(game.score);
     }
