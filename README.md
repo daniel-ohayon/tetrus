@@ -1,6 +1,8 @@
 A Tetris game implemented in Rust.
 Includes an "autoplay" mode where a bot decides on the best moves at each step.
 
+Here is an example of a game played by the bot:
+
 https://user-images.githubusercontent.com/7629631/235515223-09053799-929a-4778-ac65-a268232fe2bd.mp4
 
 ```
